@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>多API对话</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <!-- 添加 Prism.js 用于代码高亮 -->
+    <link href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism.min.css" rel="stylesheet" />
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 0;
+            background: #f5f5f5;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        #chat-container {
+            flex: 1;
+            background: white;
+            border-radius: 8px 8px 0 0;
+            padding: 20px;
+            overflow-y: auto;
+            margin-bottom: 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        #input-container {
+            background: white;
+            padding: 20px;
+            border-top: 1px solid #eee;
+            display: flex;
+            gap: 10px;
+            position: relative;
+        }
+        #user-input {
+            flex-grow: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+            resize: none;
+            min-height: 24px;
+            max-height: 150px;
+            line-height: 1.5;
+            overflow-y: auto;
+        }
+        .input-buttons {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .send-button {
+            padding: 10px 20px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            min-height: 44px;
+        }
+        .send-button:hover {
+            background: #0056b3;
+        }
+        #api-controls {
+            padding: 10px 20px;
+            margin: 0;
+            background: white;
+            border-bottom: 1px solid #eee;
+        }
+        .message {
+            margin: 10px;
+            padding: 10px;
+            border-radius: 8px;
+            max-width: 80%;
+            word-wrap: break-word;
+        }
+        .user-message {
+            background-color: #e3f2fd;
+            margin-left: auto;
+            margin-right: 10px;
+        }
+        .assistant-message {
+            background-color: #f5f5f5;
+            margin-right: auto;
+            margin-left: 10px;
+        }
+        .system-message {
+            background-color: #fff3e0;
+            margin: 10px auto;
+            text-align: center;
+            max-width: 60%;
+        }
+        .reasoning-message {
+            background-color: #f3e5f5;
+            margin: 5px 20px;
+            margin-right: auto;
+            margin-left: 30px;
+            font-style: italic;
+            white-space: pre-wrap;
+            max-width: 85%;
+        }
+        .reasoning-start-message, .reasoning-end-message {
+            background-color: #ede7f6;
+            margin: 5px auto;
+            margin-left: 20px;
+            margin-right: auto;
+            text-align: center;
+            font-size: 0.9em;
+            color: #5e35b1;
+            padding: 5px 15px;
+            max-width: 40%;
+        }
+        .api-button {
+            background: #6c757d;
+        }
+        .api-button.active {
+            background: #28a745;
+        }
+        #model-selector {
+            display: none;
+            margin: 10px 0;
+            padding: 10px;
+            background: white;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        #model-selector.visible {
+            display: block;
+        }
+        .model-button {
+            margin: 5px;
+            padding: 8px 15px;
+            background: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .model-button.active {
+            background: #28a745;
+        }
+        .system-error {
+            background-color: #ffebee;
+            color: #d32f2f;
+            margin: 10px auto;
+            text-align: center;
+            max-width: 60%;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #ffcdd2;
+        }
+
+        /* 移动端适配 */
+        @media screen and (max-width: 768px) {
+            body {
+                margin: 10px auto;
+                padding: 0 10px;
+            }
+
+            #chat-container {
+                padding: 10px;
+            }
+
+            #api-controls {
+                gap: 5px;
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+
+            .api-button, button {
+                padding: 8px 12px;
+                font-size: 14px;
+            }
+
+            #input-container {
+                padding: 10px;
+            }
+
+            .message {
+                max-width: 90%;
+            }
+
+            .user-message {
+                margin-left: 10%;
+            }
+
+            .assistant-message {
+                margin-right: 10%;
+            }
+
+            .system-message {
+                max-width: 80%;
+            }
+        }
+
+        /* 超小屏幕适配 */
+        @media screen and (max-width: 480px) {
+            body {
+                padding: 0 5px;
+            }
+
+            #api-controls {
+                padding: 5px 10px;
+            }
+
+            .api-button, button {
+                font-size: 12px;
+                padding: 6px 8px;
+            }
+
+            #input-container {
+                padding: 10px;
+            }
+
+            .message {
+                max-width: 95%;
+            }
+
+            .user-message {
+                margin-left: 5%;
+            }
+
+            .assistant-message {
+                margin-right: 5%;
+            }
+
+            .system-message {
+                max-width: 90%;
+            }
+
+            .reasoning-message {
+                margin: 5px 10px;
+                max-width: 90%;
+            }
+
+            .reasoning-start-message, .reasoning-end-message {
+                max-width: 80%;
+            }
+        }
+
+        /* 代码块样式 */
+        pre {
+            background-color: #f5f5f5;
+            padding: 1em;
+            border-radius: 5px;
+            overflow-x: auto;
+            margin: 0.5em 0;
+        }
+        code {
+            font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
+            font-size: 0.9em;
+        }
+        /* 行内代码样式 */
+        :not(pre) > code {
+            background-color: #f5f5f5;
+            padding: 0.2em 0.4em;
+            border-radius: 3px;
+            white-space: normal;
+        }
+        /* 调整消息内容样式 */
+        .message p {
+            margin: 0.5em 0;
+        }
+        .message ul, .message ol {
+            margin: 0.5em 0;
+            padding-left: 1.5em;
+        }
+        .message blockquote {
+            margin: 0.5em 0;
+            padding-left: 1em;
+            border-left: 4px solid #ddd;
+            color: #666;
+        }
+        .message table {
+            border-collapse: collapse;
+            margin: 0.5em 0;
+            width: 100%;
+        }
+        .message th, .message td {
+            border: 1px solid #ddd;
+            padding: 0.5em;
+            text-align: left;
+        }
+        .message th {
+            background-color: #f5f5f5;
+        }
+    </style>
+</head>
+<body>
+    <div id="api-controls">
+        <button onclick="switchAPI(1)" class="api-button" id="api-1">DeepSeek</button>
+        <button onclick="switchAPI(2)" class="api-button" id="api-2">通义千问</button>
+        <button onclick="switchAPI(3)" class="api-button" id="api-3">云雾-逆向</button>
+        <button onclick="switchAPI(4)" class="api-button" id="api-4">云雾-管转</button>
+        <button onclick="clearChat()" style="background: #dc3545;">清除对话</button>
+    </div>
+    <div id="model-selector"></div>
+    <div id="chat-container"></div>
+    <div id="input-container">
+        <textarea id="user-input" placeholder="输入消息..." rows="1"></textarea>
+        <div class="input-buttons">
+            <button onclick="sendMessage()" class="send-button">发送</button>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-python.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-javascript.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-bash.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-json.min.js"></script>
+    <script>
+        const socket = io();
+        let currentAssistantMessage = '';
+        
+        // 配置 marked 选项
+        marked.setOptions({
+            breaks: true,  // 支持 GitHub 风格的换行
+            gfm: true,    // 启用 GitHub 风格的 Markdown
+            sanitize: false // 允许 HTML 标签
+        });
+
+        socket.on('connect', () => {
+            console.log('Connected to server');
+            addMessage('系统', '连接成功', 'system');
+            socket.emit('get_models');
+        });
+
+        socket.on('message', (data) => {
+            if (data.type === 'system') {
+                const content = data.content;
+                if (content.includes('超时')) {
+                    addMessage('系统', content, 'system-error');
+                    const container = document.getElementById('chat-container');
+                    if (container.lastElementChild && 
+                        (container.lastElementChild.className.includes('assistant-message') || 
+                         container.lastElementChild.className.includes('reasoning-message'))) {
+                        container.removeChild(container.lastElementChild);
+                    }
+                    return;
+                }
+                addMessage('系统', content, 'system');
+                return;
+            }
+
+            if (data.type === 'assistant_start') {
+                currentAssistantMessage = `${data.content}: `;
+                addMessage('助手', currentAssistantMessage, 'assistant', true);
+            } else if (data.type === 'assistant_content') {
+                currentAssistantMessage += data.content;
+                updateLastMessage(currentAssistantMessage, true);
+            } else if (data.type === 'reasoning_start') {
+                addMessage('思考', data.content, 'reasoning-start');
+                currentAssistantMessage = '';
+                addMessage('思考过程', currentAssistantMessage, 'reasoning', true);
+            } else if (data.type === 'reasoning_content') {
+                currentAssistantMessage += data.content;
+                updateLastMessage(currentAssistantMessage, false);
+            } else if (data.type === 'reasoning_end') {
+                addMessage('思考', data.content, 'reasoning-end');
+                currentAssistantMessage = '';  // 重置消息缓存
+            }
+        });
+
+        function addMessage(sender, content, type, isNew = true) {
+            const container = document.getElementById('chat-container');
+            if (isNew) {
+                const div = document.createElement('div');
+                div.className = `message ${type}-message`;
+                
+                // 根据消息类型决定是否进行 markdown 渲染
+                if (type === 'assistant' || type === 'user') {
+                    div.innerHTML = marked.parse(content);
+                } else {
+                    div.textContent = content;
+                }
+                
+                container.appendChild(div);
+                container.scrollTop = container.scrollHeight;
+                
+                // 处理代码块的样式
+                if (type === 'assistant' || type === 'user') {
+                    Prism.highlightAllUnder(div);
+                }
+            }
+        }
+
+        function updateLastMessage(content, shouldRenderMarkdown = true) {
+            const container = document.getElementById('chat-container');
+            const lastMessage = container.lastElementChild;
+            if (lastMessage) {
+                if (shouldRenderMarkdown) {
+                    lastMessage.innerHTML = marked.parse(content);
+                    // 处理代码块的样式
+                    Prism.highlightAllUnder(lastMessage);
+                } else {
+                    lastMessage.textContent = content;
+                }
+                container.scrollTop = container.scrollHeight;
+            }
+        }
+
+        function sendMessage() {
+            const input = document.getElementById('user-input');
+            const message = input.value.trim();
+            if (message) {
+                addMessage('用户', message, 'user');
+                socket.emit('user_message', {message: message});
+                input.value = '';
+            }
+        }
+
+        function switchAPI(apiNum) {
+            socket.emit('switch_api', {api_num: apiNum});
+            document.querySelectorAll('.api-button').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`api-${apiNum}`).classList.add('active');
+            document.getElementById('model-selector').classList.add('visible');
+        }
+
+        function clearChat() {
+            socket.emit('clear_chat');
+            document.getElementById('chat-container').innerHTML = '';
+            addMessage('系统', '对话已清除', 'system');
+        }
+
+        function updateModelSelector(apiModels, defaultModel) {
+            const selector = document.getElementById('model-selector');
+            selector.innerHTML = '';
+            
+            if (!apiModels || apiModels.length === 0) {
+                selector.classList.remove('visible');
+                return;
+            }
+            
+            apiModels.forEach(model => {
+                const btn = document.createElement('button');
+                btn.className = `model-button ${model === defaultModel ? 'active' : ''}`;
+                btn.textContent = model;
+                btn.onclick = () => switchModel(model);
+                selector.appendChild(btn);
+            });
+        }
+        
+        function switchModel(model) {
+            socket.emit('switch_model', {model: model});
+            document.querySelectorAll('.model-button').forEach(btn => {
+                btn.classList.toggle('active', btn.textContent === model);
+            });
+            document.getElementById('model-selector').classList.remove('visible');
+        }
+
+        socket.on('api_models', (data) => {
+            updateModelSelector(data.models, data.default_model);
+            const apiButtons = document.querySelectorAll('.api-button');
+            apiButtons.forEach(btn => btn.classList.remove('active'));
+            if (data.models.includes('deepseek-chat')) {
+                document.getElementById('api-1').classList.add('active');
+            } else if (data.models.includes('qwen-max')) {
+                document.getElementById('api-2').classList.add('active');
+            } else if (data.models.includes('gpt-4o')) {
+                document.getElementById('api-3').classList.add('active');
+            } else if (data.models.includes('gemini-2.0')) {
+                document.getElementById('api-4').classList.add('active');
+            }
+            addMessage('系统', `当前使用模型: ${data.default_model}`, 'system');
+        });
+
+        socket.on('model_switched', (data) => {
+            addMessage('系统', `已切换到模型: ${data.model}`, 'system');
+        });
+
+        // 自动调整文本框高度
+        document.getElementById('user-input').addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
+        });
+
+        // 添加回车发送，shift+回车换行的功能
+        document.getElementById('user-input').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                if (!e.shiftKey) {
+                    e.preventDefault(); // 阻止默认的换行行为
+                    sendMessage();
+                }
+            }
+        });
+
+        // 添加快捷键显示模型选择器
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'm' || e.key === 'M') {
+                document.getElementById('model-selector').classList.add('visible');
+            }
+        });
+    </script>
+</body>
+</html> 

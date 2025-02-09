@@ -1,0 +1,183 @@
+/* 基础样式 */
+body {
+    font-family: Arial, sans-serif;
+    max-width: 800px;
+    margin: 20px auto;
+    padding: 0 20px;
+    background: #f5f5f5;
+}
+
+#chat-container {
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    height: 500px;
+    overflow-y: auto;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+#input-container {
+    display: flex;
+    gap: 10px;
+}
+
+#user-input {
+    flex-grow: 1;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 16px;
+}
+
+button {
+    padding: 10px 20px;
+    background: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+button:hover {
+    background: #0056b3;
+}
+
+.message {
+    margin: 10px 0;
+    padding: 10px;
+    border-radius: 4px;
+    word-break: break-word;
+}
+
+.user-message {
+    background: #e3f2fd;
+    margin-left: 20%;
+}
+
+.assistant-message {
+    background: #f5f5f5;
+    margin-right: 20%;
+}
+
+.system-message {
+    color: #666;
+    font-style: italic;
+    text-align: center;
+}
+
+#api-controls {
+    margin-bottom: 20px;
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.api-button {
+    background: #6c757d;
+}
+
+.api-button.active {
+    background: #28a745;
+}
+
+#model-selector {
+    display: none;
+    margin: 10px 0;
+    padding: 10px;
+    background: white;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    text-align: center;
+}
+
+#model-selector.visible {
+    display: block;
+}
+
+.model-button {
+    margin: 5px;
+    padding: 8px 15px;
+    background: #6c757d;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.model-button.active {
+    background: #28a745;
+}
+
+/* 移动端适配 */
+@media screen and (max-width: 768px) {
+    body {
+        margin: 10px auto;
+        padding: 0 10px;
+    }
+
+    #chat-container {
+        height: calc(100vh - 220px);
+        padding: 10px;
+    }
+
+    #api-controls {
+        gap: 5px;
+    }
+
+    button {
+        padding: 8px 12px;
+        font-size: 14px;
+    }
+
+    #input-container {
+        flex-direction: column;
+        gap: 5px;
+    }
+
+    #user-input {
+        width: 100%;
+        box-sizing: border-box;
+        rows: 2;
+    }
+
+    #input-container button {
+        width: 100%;
+    }
+
+    .user-message {
+        margin-left: 10%;
+    }
+
+    .assistant-message {
+        margin-right: 10%;
+    }
+
+    .model-button {
+        padding: 6px 10px;
+        font-size: 13px;
+    }
+}
+
+/* 超小屏幕适配 */
+@media screen and (max-width: 480px) {
+    body {
+        padding: 0 5px;
+    }
+
+    #chat-container {
+        height: calc(100vh - 200px);
+    }
+
+    .user-message, .assistant-message {
+        margin-left: 5%;
+        margin-right: 5%;
+    }
+
+    #api-controls button {
+        font-size: 12px;
+        padding: 6px 8px;
+    }
+} 

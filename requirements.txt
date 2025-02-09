@@ -1,0 +1,6 @@
+openai==1.61.1
+rich
+python-dotenv
+flask==3.0.2
+flask-cors==4.0.0
+flask-socketio==5.3.6
