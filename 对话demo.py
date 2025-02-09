@@ -508,9 +508,10 @@ def get_device_info(user_agent):
     return device_info
 
 @socketio.on('connect')
-def handle_connect(auth=None):  # 添加可选参数
+def handle_connect(auth=None):
     sid = request.sid
     print(f"Client connected: {sid}")
+    
     # 获取客户端IP
     client_ip = (
         request.headers.get('X-Real-IP') or 
@@ -521,19 +522,31 @@ def handle_connect(auth=None):  # 添加可选参数
         request.remote_addr or
         request.environ.get('REMOTE_ADDR', 'unknown')
     )
-    # 如果IP是逗号分隔的列表，取第一个
     if isinstance(client_ip, str) and ',' in client_ip:
         client_ip = client_ip.split(',')[0].strip()
     
     # 获取设备信息
     user_agent = request.headers.get('User-Agent', '')
     device_info = get_device_info(user_agent)
-    print(f"Client IP: {client_ip}, Device: {device_info}")
     
-    # 为新连接的用户创建会话
-    if sid not in user_sessions:
+    # 检查是否存在相同IP的会话
+    existing_session = None
+    for existing_sid, session in user_sessions.items():
+        if session.client_ip == client_ip:
+            # 如果找到相同IP的会话且在30分钟内活跃，则复用该会话
+            if time.time() - session.last_active_time < 1800:  # 30分钟
+                existing_session = session
+                # 删除旧的会话
+                del user_sessions[existing_sid]
+                break
+    
+    if existing_session:
+        # 复用现有会话
+        user_sessions[sid] = existing_session
+        user_sessions[sid].update_active_time()
+    else:
+        # 创建新会话
         user_sessions[sid] = UserSession(CURRENT_API, AVAILABLE_APIS[CURRENT_API])
-        # 存储客户端IP和设备信息
         user_sessions[sid].client_ip = client_ip
         user_sessions[sid].device_info = device_info
 
@@ -641,10 +654,16 @@ class UserSession:
             base_url=api_config["base_url"]
         )
         self.client_ip = None
-        self.device_info = None  # 存储设备信息字典
+        self.device_info = None
+        self.last_active_time = time.time()  # 添加最后活动时间
+
+    def update_active_time(self):
+        """更新最后活动时间"""
+        self.last_active_time = time.time()
 
     def clear_messages(self):
         self.messages = self.messages[:1]
+        self.update_active_time()
 
     def switch_api(self, api_name, api_config):
         self.api_name = api_name
@@ -653,10 +672,12 @@ class UserSession:
             api_key=api_config["api_key"],
             base_url=api_config["base_url"]
         )
+        self.update_active_time()
 
     def switch_model(self, model_name):
         if model_name in API_CONFIGS[self.api_name]["models"]:
             self.current_model = model_name
+            self.update_active_time()
             return True
         return False
 
@@ -793,6 +814,17 @@ def remove_ip_mapping(ip):
     user_logger.remove_ip_mapping(ip)
     return jsonify({'message': '删除成功'})
 
+def cleanup_inactive_sessions():
+    """清理不活跃的会话"""
+    current_time = time.time()
+    inactive_sids = []
+    for sid, session in user_sessions.items():
+        if current_time - session.last_active_time > 3600:  # 1小时未活动
+            inactive_sids.append(sid)
+    for sid in inactive_sids:
+        del user_sessions[sid]
+
+# 在主循环中添加定期清理
 if __name__ == "__main__":
     # 加载环境变量和初始化控制台
     load_dotenv()
@@ -810,5 +842,14 @@ if __name__ == "__main__":
     # 如果默认API不可用，则选择第一个可用的API
     if CURRENT_API not in AVAILABLE_APIS:
         CURRENT_API = next(iter(AVAILABLE_APIS))
+    
+    def cleanup_task():
+        while True:
+            time.sleep(300)  # 每5分钟清理一次
+            cleanup_inactive_sessions()
+    
+    from threading import Thread
+    cleanup_thread = Thread(target=cleanup_task, daemon=True)
+    cleanup_thread.start()
     
     socketio.run(app, host='0.0.0.0', port=5005, debug=True, allow_unsafe_werkzeug=True) 
