@@ -700,21 +700,22 @@ class UserLogger:
             os.makedirs(self.log_dir)
         self.ip_mapper = IPMapper(os.path.join(self.log_dir, "ip_mapping.json"))
 
-    def get_feature_hash(self, device_info):
-        """根据设备特征生成唯一标识"""
+    def get_feature_hash(self, device_info, ip_address):
+        """根据设备特征和IP生成唯一标识"""
         features = [
+            ip_address,  # IP 地址作为第一个特征
             device_info.get('type', '未知'),
             device_info.get('os', '未知'),
             device_info.get('browser', '未知'),
-            'PC' if device_info.get('type') == '电脑' else device_info.get('model', '未知')
+            device_info.get('model', '未知')
         ]
-        # 将特征组合成一个标识字符串
+        # 将特征组合成一个标识字符串，完全匹配才会用同一个文件
         feature_str = '_'.join(str(f).replace(' ', '').lower() for f in features)
         return feature_str
 
-    def _get_log_file(self, device_info):
-        """根据设备特征获取对应的日志文件名"""
-        feature_hash = self.get_feature_hash(device_info)
+    def _get_log_file(self, device_info, ip_address):
+        """根据设备特征和IP获取对应的日志文件名"""
+        feature_hash = self.get_feature_hash(device_info, ip_address)
         current_date = datetime.now().strftime("%Y%m%d")
         return os.path.join(self.log_dir, f"{feature_hash}_{current_date}.log")
 
@@ -759,7 +760,7 @@ class UserLogger:
         user_input = user_input.replace('\n', ' ').replace('\r', '')
         
         # 获取对应的日志文件
-        log_file = self._get_log_file(device_info)
+        log_file = self._get_log_file(device_info, ip_address)
         self._ensure_log_file(log_file)
         
         # 简化设备信息显示
